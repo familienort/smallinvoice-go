@@ -2,6 +2,7 @@ package smallinvoice
 
 import (
 	"errors"
+	"os"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -12,6 +13,7 @@ type Credentials struct {
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
 	GrantType    string `json:"grant_type"`
+	Scope        string `json:"scope"`
 }
 
 // AuthBundle stores all auth related data.
@@ -24,9 +26,9 @@ type AuthBundle struct {
 // Client stores all connection related information
 // and acts as the gateway.
 type Client struct {
-	restyClient *resty.Client
-	credentials Credentials
-	authBundle  AuthBundle
+	RestyClient *resty.Client
+	Credentials Credentials
+	AuthBundle  AuthBundle
 }
 
 // NewClient creates a new Smallinvoice client.
@@ -38,20 +40,25 @@ func NewClient(clientID string, clientSecret string) (*Client, error) {
 	resty.SetHostURL("https://api.smallinvoice.com/v2")
 	resty.SetHeader("Accept", "application/json")
 
+	// Put resty in debug mode, when debug os key
+	// is present.
+	resty.SetDebug(os.Getenv("DEBUG") != "")
+
 	// Create basic client with resty and credentials.
 	client := &Client{
-		restyClient: resty,
-		credentials: Credentials{
+		RestyClient: resty,
+		Credentials: Credentials{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
 			GrantType:    "client_credentials",
+			Scope:        "contact",
 		},
 	}
 
 	// Validate credentials by trying to fetch an auth bundle.
-	resp, err := client.restyClient.R().
-		SetBody(client.credentials).
-		SetResult(client.authBundle).
+	resp, err := client.RestyClient.R().
+		SetBody(client.Credentials).
+		SetResult(&client.AuthBundle).
 		Post("/auth/access-tokens")
 
 	// If it wasn't successful return the error.
@@ -64,16 +71,14 @@ func NewClient(clientID string, clientSecret string) (*Client, error) {
 		return &Client{}, errors.New(string(resp.Body()))
 	}
 
-	// Set the received access token.
-	client.restyClient.SetAuthToken(client.authBundle.AccessToken)
-
 	// If it was successful, return the client.
 	return client, nil
 }
 
 // CreateContact creates a new contact
 func (c *Client) CreateContact(contact Contact) (Contact, error) {
-	resp, err := c.restyClient.R().
+	resp, err := c.RestyClient.R().
+		SetAuthToken(c.AuthBundle.AccessToken).
 		SetBody(contact).
 		SetResult(contact).
 		Post("/contacts")
