@@ -11,7 +11,7 @@ import (
 type Credentials struct {
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
-	Scopes       string `json:"scopes"`
+	GrantType    string `json:"grant_type"`
 }
 
 // AuthBundle stores all auth related data.
@@ -30,7 +30,7 @@ type Client struct {
 }
 
 // NewClient creates a new Smallinvoice client.
-func NewClient(clientSecret string, clientID string) (*Client, error) {
+func NewClient(clientID string, clientSecret string) (*Client, error) {
 	// Create the resty client
 	resty := resty.New()
 
@@ -44,6 +44,7 @@ func NewClient(clientSecret string, clientID string) (*Client, error) {
 		credentials: Credentials{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
+			GrantType:    "client_credentials",
 		},
 	}
 
@@ -59,8 +60,8 @@ func NewClient(clientSecret string, clientID string) (*Client, error) {
 	}
 
 	// Check valid status code.
-	if resp.Status() != "200" {
-		return &Client{}, errors.New("Wrong status code: " + resp.Status())
+	if resp.StatusCode() != 200 {
+		return &Client{}, errors.New(string(resp.Body()))
 	}
 
 	// If it was successful, return the client.
