@@ -64,6 +64,27 @@ func NewClient(clientID string, clientSecret string) (*Client, error) {
 		return &Client{}, errors.New(string(resp.Body()))
 	}
 
+	// Set the received access token.
+	client.restyClient.SetAuthToken(client.authBundle.AccessToken)
+
 	// If it was successful, return the client.
 	return client, nil
+}
+
+// CreateContact creates a new contact
+func (c *Client) CreateContact(contact Contact) (Contact, error) {
+	resp, err := c.restyClient.R().
+		SetBody(contact).
+		SetResult(contact).
+		Post("/contacts")
+
+	if err != nil {
+		return contact, err
+	}
+
+	if resp.StatusCode() != 201 {
+		return contact, errors.New(string(resp.Body()))
+	}
+
+	return contact, nil
 }
