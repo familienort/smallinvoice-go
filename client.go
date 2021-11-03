@@ -93,3 +93,21 @@ func (c *Client) CreateContact(contact Contact) (Contact, error) {
 
 	return contact, nil
 }
+
+// GetContact fetches one contact from the API.
+func (c *Client) GetContact(id string) (contact Contact, err error) {
+	resp, err := c.RestyClient.R().
+		SetAuthToken(c.AuthBundle.AccessToken).
+		SetResult(&contact).
+		Get("/contacts/" + id)
+
+	if err != nil {
+		return contact, err
+	}
+
+	if resp.StatusCode() != 200 {
+		return contact, errors.New(string(resp.Body()))
+	}
+
+	return contact, nil
+}
